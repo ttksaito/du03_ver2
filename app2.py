@@ -5,6 +5,7 @@ import tempfile
 import os
 import datetime
 from io import BytesIO
+import base64
 
 # モバイル対応のためのスタイル設定
 st.markdown("""
@@ -143,16 +144,27 @@ if os.path.exists(excel_file):
             current_example = section_examples.iloc[st.session_state.current_example_idx]
             sentence = current_example['例文']
             
-            # 音声再生
-            tts = gTTS(sentence, lang='en')
-            audio_bytes = BytesIO()
-            tts.write_to_fp(audio_bytes)
-            audio_bytes.seek(0)
-
-            # モバイル向けのレイアウト調整
-            st.markdown('<div style="margin: 1rem 0;">', unsafe_allow_html=True)
-            st.audio(audio_bytes, format='audio/mp3')
-            st.markdown('</div>', unsafe_allow_html=True)
+            # 音声再生の処理を改善
+            try:
+                # gTTSでメモリ上に音声生成
+                tts = gTTS(sentence, lang='en')
+                audio_bytes = BytesIO()
+                tts.write_to_fp(audio_bytes)
+                audio_bytes.seek(0)
+                
+                # HTML5 Audioプレーヤーを使用
+                audio_base64 = base64.b64encode(audio_bytes.read()).decode()
+                audio_player = f'''
+                    <audio controls style="width: 100%; margin: 1rem 0;">
+                        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+                        お使いのブラウザは音声再生に対応していません。
+                    </audio>
+                '''
+                st.markdown(audio_player, unsafe_allow_html=True)
+                
+            except Exception as e:
+                st.error(f"音声の生成中にエラーが発生しました: {str(e)}")
+                st.info("もう一度再生ボタンを押してみてください。")
             
             # 回答表示ボタン
             if st.button("回答表示", key="display_answer_button", help="英文を表示します"):
